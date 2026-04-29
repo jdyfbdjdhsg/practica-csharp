@@ -1,4 +1,4 @@
-﻿namespace Task2
+namespace Task2
 {
     public interface ICacheStrategy
     {
@@ -70,85 +70,6 @@
         }
     }
 
-    public class Computer
-    {
-        public string CPU { get; set; }
-        public string RAM { get; set; }
-        public string Storage { get; set; }
-        public string GraphicsCard { get; set; }
-
-        public void ShowSpecs()
-        {
-            Console.WriteLine($"Компьютер: CPU={CPU}, RAM={RAM}, Storage={Storage}, GPU={GraphicsCard}");
-        }
-    }
-
-    public interface IComputerBuilder
-    {
-        IComputerBuilder SetCPU(string cpu);
-        IComputerBuilder SetRAM(string ram);
-        IComputerBuilder SetStorage(string storage);
-        IComputerBuilder SetGraphicsCard(string gpu);
-        Computer Build();
-    }
-
-    public class GamingComputerBuilder : IComputerBuilder
-    {
-        private Computer _computer = new Computer();
-
-        public IComputerBuilder SetCPU(string cpu)
-        {
-            _computer.CPU = cpu;
-            return this;
-        }
-
-        public IComputerBuilder SetRAM(string ram)
-        {
-            _computer.RAM = ram;
-            return this;
-        }
-
-        public IComputerBuilder SetStorage(string storage)
-        {
-            _computer.Storage = storage;
-            return this;
-        }
-
-        public IComputerBuilder SetGraphicsCard(string gpu)
-        {
-            _computer.GraphicsCard = gpu;
-            return this;
-        }
-
-        public Computer Build()
-        {
-            return _computer;
-        }
-    }
-
-    public class ComputerDirector
-    {
-        public Computer BuildGamingPC()
-        {
-            return new GamingComputerBuilder()
-                .SetCPU("Intel i9")
-                .SetRAM("32GB DDR5")
-                .SetStorage("1TB NVMe SSD")
-                .SetGraphicsCard("NVIDIA RTX 4080")
-                .Build();
-        }
-
-        public Computer BuildOfficePC()
-        {
-            return new GamingComputerBuilder()
-                .SetCPU("Intel i5")
-                .SetRAM("16GB DDR4")
-                .SetStorage("512GB SSD")
-                .SetGraphicsCard("Integrated")
-                .Build();
-        }
-    }
-
 
     class Program
     {
@@ -171,26 +92,6 @@
             Console.WriteLine($"Получено: {cacheManager.GetData("user:3")}");
 
             Console.WriteLine("\nBuilder Pattern\n");
-
-            var builder = new GamingComputerBuilder();
-            var customPC = builder
-                .SetCPU("AMD Ryzen 7")
-                .SetRAM("64GB DDR5")
-                .SetStorage("2TB SSD")
-                .SetGraphicsCard("AMD RX 7900")
-                .Build();
-
-            Console.Write("Пользовательский: ");
-            customPC.ShowSpecs();
-
-            var director = new ComputerDirector();
-            var gamingPC = director.BuildGamingPC();
-            var officePC = director.BuildOfficePC();
-
-            Console.Write("Игровой: ");
-            gamingPC.ShowSpecs();
-            Console.Write("Офисный: ");
-            officePC.ShowSpecs();
         }
     }
 }
