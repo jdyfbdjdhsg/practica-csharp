@@ -1,0 +1,89 @@
+﻿<Window x:Class="Day13.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Бронирование билетов в кинотеатр"
+        Height="500" Width="650"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.InputBindings>
+        <KeyBinding Key="N" Modifiers="Ctrl" Command="{Binding BookTicketCommand}"/>
+        <KeyBinding Key="E" Modifiers="Ctrl" Command="{Binding EditTicketCommand}"/>
+        <KeyBinding Key="D" Modifiers="Ctrl" Command="{Binding CancelTicketCommand}"/>
+    </Window.InputBindings>
+
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_Файл">
+                <MenuItem Header="_Выход" Click="Exit_Click" InputGestureText="Alt+F4"/>
+            </MenuItem>
+            <MenuItem Header="_Фильмы">
+                <MenuItem Header="_Список фильмов" IsEnabled="False"/>
+                <MenuItem Header="_Афиша" IsEnabled="False"/>
+            </MenuItem>
+            <MenuItem Header="_Зал">
+                <MenuItem Header="_Схема зала" IsEnabled="False"/>
+                <MenuItem Header="_Свободные места" IsEnabled="False"/>
+            </MenuItem>
+            <MenuItem Header="_Настройки">
+                <MenuItem Header="_О программе" Click="About_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <ToolBar DockPanel.Dock="Top">
+            <Button Command="{Binding BookTicketCommand}"
+                    ToolTip="Забронировать билет (Ctrl+N)" Padding="8,4">
+                🎟 Забронировать
+            </Button>
+            <Separator/>
+            <Button Command="{Binding EditTicketCommand}"
+                    ToolTip="Изменить бронь (Ctrl+E)" Padding="8,4">
+                ✏ Изменить бронь
+            </Button>
+            <Separator/>
+            <Button Command="{Binding CancelTicketCommand}"
+                    ToolTip="Отменить бронь (Ctrl+D)" Padding="8,4">
+                ✖ Отменить бронь
+            </Button>
+        </ToolBar>
+
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock>
+                    Броней: <Run Text="{Binding Bookings.Count, Mode=OneWay}"/>
+                </TextBlock>
+            </StatusBarItem>
+        </StatusBar>
+
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="Список броней:"
+                       FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
+
+            <ListBox Grid.Row="1"
+                     ItemsSource="{Binding Bookings}"
+                     SelectedItem="{Binding SelectedBooking}"
+                     DisplayMemberPath="DisplayText"
+                     FontSize="13"
+                     BorderThickness="1"
+                     BorderBrush="#CCCCCC"/>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal"
+                        HorizontalAlignment="Right" Margin="0,8,0,0">
+                <Button Content="Забронировать (Ctrl+N)"
+                        Command="{Binding BookTicketCommand}"
+                        Width="180" Height="30" Margin="5,0"/>
+                <Button Content="Изменить (Ctrl+E)"
+                        Command="{Binding EditTicketCommand}"
+                        Width="140" Height="30" Margin="5,0"/>
+                <Button Content="Отменить (Ctrl+D)"
+                        Command="{Binding CancelTicketCommand}"
+                        Width="140" Height="30" Margin="5,0"/>
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</Window>

@@ -1,0 +1,64 @@
+<Window x:Class="Day13.BookingDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Бронирование билета"
+        Height="260" Width="420"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="90"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="Клиент:"
+                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+        <TextBox x:Name="CustomerBox" Grid.Row="0" Grid.Column="1"
+                 Height="28" Margin="0,4" Padding="4,2"
+                 VerticalContentAlignment="Center"/>
+
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="Фильм:"
+                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+        <ComboBox x:Name="MovieBox" Grid.Row="1" Grid.Column="1"
+                  Height="28" Margin="0,4" IsEditable="True">
+            <ComboBoxItem>Аватар 2</ComboBoxItem>
+            <ComboBoxItem>Барби</ComboBoxItem>
+            <ComboBoxItem>Оппенгеймер</ComboBoxItem>
+            <ComboBoxItem>Джон Уик 4</ComboBoxItem>
+            <ComboBoxItem>Дюна: Часть вторая</ComboBoxItem>
+            <ComboBoxItem>Гладиатор 2</ComboBoxItem>
+        </ComboBox>
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="Место:"
+                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+        <ComboBox x:Name="SeatBox" Grid.Row="2" Grid.Column="1"
+                  Height="28" Margin="0,4" IsEditable="True">
+            <ComboBoxItem>A1</ComboBoxItem>
+            <ComboBoxItem>A2</ComboBoxItem>
+            <ComboBoxItem>A3</ComboBoxItem>
+            <ComboBoxItem>B1</ComboBoxItem>
+            <ComboBoxItem>B2</ComboBoxItem>
+            <ComboBoxItem>B3</ComboBoxItem>
+            <ComboBoxItem>C1</ComboBoxItem>
+            <ComboBoxItem>C2</ComboBoxItem>
+            <ComboBoxItem>C3</ComboBoxItem>
+        </ComboBox>
+
+        <StackPanel Grid.Row="4" Grid.ColumnSpan="2"
+                    Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="0,12,0,0">
+            <Button Content="OK" Width="90" Height="30"
+                    Margin="6,0,0,0" IsDefault="True" Click="Ok_Click"/>
+            <Button Content="Отмена" Width="90" Height="30"
+                    Margin="6,0,0,0" IsCancel="True" Click="Cancel_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
