@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
+using System.Linq;
 using Day18.Models;
 using Day18.Services;
 using Day18.ViewModels;
@@ -20,8 +21,10 @@ namespace Day18.Views
         private Movie? _selectedMovie;
         private Grid? _popupOverlay;
 
-        // Для варианта 9
         private CinemaViewModel? _cinemaViewModel;
+        private DataService _dataService = null!;
+        private SessionRepository _sessionRepository = null!;
+        private TicketRepository _ticketRepository = null!;
 
         public static User? LoggedInUser { get; set; }
 
@@ -68,23 +71,45 @@ namespace Day18.Views
                 }
 
                 // Инициализация для варианта 9
-                var dataService = new DataService();
-                var sessionRepository = new SessionRepository(dataService);
-                var ticketRepository = new TicketRepository(dataService);
+                _dataService = new DataService();
+                _sessionRepository = new SessionRepository(_dataService);
+                _ticketRepository = new TicketRepository(_dataService);
 
-                _cinemaViewModel = new CinemaViewModel(sessionRepository, ticketRepository, _currentUser);
+                _cinemaViewModel = new CinemaViewModel(_sessionRepository, _ticketRepository, _currentUser);
 
-                // Установка DataContext для привязки ComboBox и ListBox
+                // Подписываемся на события (только если они не null)
+                if (_cinemaViewModel != null)
+                {
+                    _cinemaViewModel.BookingCompleted += async (sender, e) =>
+                    {
+                        if (_selectedMovie != null)
+                        {
+                            await LoadSeatsAsync(_selectedMovie.Id);
+                        }
+                        await LoadBookingsAsync();
+                    };
+
+                    _cinemaViewModel.BookingCancelled += async (sender, e) =>
+                    {
+                        if (_selectedMovie != null)
+                        {
+                            await LoadSeatsAsync(_selectedMovie.Id);
+                        }
+                        await LoadBookingsAsync();
+                    };
+                }
+
+                // Установка DataContext
                 this.DataContext = _cinemaViewModel;
 
                 // Загрузка данных для варианта 9
-                if (_cinemaViewModel.LoadSessionsCommand.CanExecute(null))
-                    _cinemaViewModel.LoadSessionsCommand.Execute(null);
+                if (_cinemaViewModel != null)
+                {
+                    await _cinemaViewModel.LoadSessionsAsync();
+                    await _cinemaViewModel.LoadTicketsAsync();
+                }
 
-                if (_cinemaViewModel.LoadTicketsCommand.CanExecute(null))
-                    _cinemaViewModel.LoadTicketsCommand.Execute(null);
-
-                // Загрузка старых данных (фильмы, схема зала)
+                // Загрузка старых данных
                 await LoadMoviesAsync();
                 await LoadBookingsAsync();
             }
@@ -132,6 +157,13 @@ namespace Day18.Views
                 var seats = await _cinemaService.GetSeatsAsync(movieId);
                 SeatsPanel.Children.Clear();
 
+                // Получаем забронированные места из новой системы (TicketRepository)
+                var tickets = await _ticketRepository.GetAllAsync();
+                var bookedSeats = tickets
+                    .Where(t => t.MovieTitle == _selectedMovie?.Title)
+                    .Select(t => t.SeatNumber)
+                    .ToHashSet();
+
                 var groupedSeats = seats.GroupBy(s => s.Row).OrderBy(g => g.Key);
 
                 foreach (var group in groupedSeats)
@@ -150,6 +182,10 @@ namespace Day18.Views
 
                     foreach (var seat in group.OrderBy(s => s.Number))
                     {
+                        // Проверяем, забронировано ли место через новую систему
+                        bool isBookedByNewSystem = bookedSeats.Contains(seat.SeatNumber);
+                        bool isAvailable = seat.IsAvailable && !isBookedByNewSystem;
+
                         var button = new Button
                         {
                             Width = 50,
@@ -166,8 +202,10 @@ namespace Day18.Views
                                 FontSize = 12
                             },
                             Tag = seat,
-                            Background = seat.IsAvailable ? new SolidColorBrush(Color.FromRgb(76, 175, 80)) : new SolidColorBrush(Color.FromRgb(244, 67, 54)),
-                            IsEnabled = seat.IsAvailable
+                            Background = isAvailable
+                                ? new SolidColorBrush(Color.FromRgb(76, 175, 80))  // Зелёный - свободно
+                                : new SolidColorBrush(Color.FromRgb(244, 67, 54)), // Красный - занято
+                            IsEnabled = isAvailable
                         };
 
                         button.Click += async (s, e) => await ShowSessionInfoPopup(seat);
@@ -182,8 +220,8 @@ namespace Day18.Views
                     fadeInSb.Begin(SeatsContainer);
                 }
 
-                var availableCount = seats.Count(s => s.IsAvailable);
-                StatusText.Text = $"Свободных мест: {availableCount} из {seats.Count} | VIP ряд - 5 руб., Средний - 4 руб., Обычный - 3 руб.";
+                var availableCount = seats.Count(s => s.IsAvailable && !bookedSeats.Contains(s.SeatNumber));
+                StatusText.Text = $"Свободных мест: {availableCount} из {seats.Count} | Забронировано через новую систему: {bookedSeats.Count}";
             }
             catch (Exception ex)
             {
@@ -406,6 +444,7 @@ namespace Day18.Views
             LoadingProgressBar.Visibility = Visibility.Visible;
             StatusText.Text = "Бронирование...";
 
+            // Создаём бронь в старой системе
             var booking = new Booking
             {
                 UserId = _currentUser.Id,
@@ -423,12 +462,32 @@ namespace Day18.Views
 
                 if (resultBooking != null)
                 {
+                    // Также создаём билет в новой системе для синхронизации
+                    var session = (await _sessionRepository.GetAllAsync()).FirstOrDefault();
+                    if (session != null)
+                    {
+                        var ticket = new Ticket
+                        {
+                            UserId = _currentUser.Id,
+                            SessionId = session.Id,
+                            CustomerName = _currentUser.DisplayName,
+                            PhoneNumber = _currentUser.PhoneNumber ?? "",
+                            SeatNumber = seat.SeatNumber,
+                            Price = seat.Price,
+                            MovieTitle = _selectedMovie.Title,
+                            SessionTime = DateTime.Now,
+                            BookingTime = DateTime.Now,
+                            Status = "Confirmed"
+                        };
+                        await _ticketRepository.AddAsync(ticket);
+                        await _ticketRepository.SaveChangesAsync();
+
+                        // Обновляем билеты в ViewModel
+                        await _cinemaViewModel.LoadTicketsAsync();
+                    }
+
                     await LoadSeatsAsync(_selectedMovie.Id);
                     await LoadBookingsAsync();
-
-                    // Обновляем билеты в варианте 9
-                    if (_cinemaViewModel != null && _cinemaViewModel.LoadTicketsCommand.CanExecute(null))
-                        _cinemaViewModel.LoadTicketsCommand.Execute(null);
 
                     StatusText.Text = "Билет успешно забронирован!";
                     MessageBox.Show($"Бронирование успешно!\n\nФильм: {_selectedMovie.Title}\nМесто: {seat.SeatNumber}\nСумма: {seat.Price} руб.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -488,15 +547,21 @@ namespace Day18.Views
 
                         if (success)
                         {
+                            // Также удаляем билет из новой системы
+                            var tickets = await _ticketRepository.GetAllAsync();
+                            var ticketToDelete = tickets.FirstOrDefault(t => t.SeatNumber == selectedBooking.SeatNumber && t.MovieTitle == selectedBooking.MovieTitle);
+                            if (ticketToDelete != null)
+                            {
+                                await _ticketRepository.DeleteAsync(ticketToDelete.Id);
+                                await _ticketRepository.SaveChangesAsync();
+                                await _cinemaViewModel.LoadTicketsAsync();
+                            }
+
                             await LoadBookingsAsync();
                             if (_selectedMovie != null)
                             {
                                 await LoadSeatsAsync(_selectedMovie.Id);
                             }
-
-                            // Обновляем билеты в варианте 9
-                            if (_cinemaViewModel != null && _cinemaViewModel.LoadTicketsCommand.CanExecute(null))
-                                _cinemaViewModel.LoadTicketsCommand.Execute(null);
 
                             StatusText.Text = "Бронь отменена";
                             MessageBox.Show("Бронирование успешно отменено.", "Отмена", MessageBoxButton.OK, MessageBoxImage.Information);

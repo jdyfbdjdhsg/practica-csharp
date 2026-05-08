@@ -24,6 +24,10 @@ namespace Day18.ViewModels
             {
                 _selectedSession = value;
                 OnPropertyChanged();
+                if (value != null)
+                {
+                    StatusMessage = $"Выбран сеанс: {value.MovieTitle}";
+                }
             }
         }
 
@@ -82,7 +86,7 @@ namespace Day18.ViewModels
             }
         }
 
-        private string _statusMessage = string.Empty;
+        private string _statusMessage = "Готов к работе";
         public string StatusMessage
         {
             get => _statusMessage;
@@ -92,6 +96,10 @@ namespace Day18.ViewModels
                 OnPropertyChanged();
             }
         }
+
+        // События для синхронизации со схемой зала
+        public event EventHandler? BookingCompleted;
+        public event EventHandler? BookingCancelled;
 
         public ICommand LoadSessionsCommand { get; }
         public ICommand LoadTicketsCommand { get; }
@@ -108,6 +116,11 @@ namespace Day18.ViewModels
             {
                 CustomerName = _currentUser.FullName;
                 PhoneNumber = _currentUser.PhoneNumber;
+                StatusMessage = $"Добро пожаловать, {_currentUser.DisplayName}!";
+            }
+            else
+            {
+                StatusMessage = "Пользователь не авторизован";
             }
 
             LoadSessionsCommand = new AsyncRelayCommand(async () => await LoadSessionsAsync());
@@ -124,7 +137,7 @@ namespace Day18.ViewModels
                    !string.IsNullOrWhiteSpace(CustomerName);
         }
 
-        private async Task LoadSessionsAsync()
+        public async Task LoadSessionsAsync()
         {
             try
             {
@@ -134,16 +147,21 @@ namespace Day18.ViewModels
                 var sessions = await _sessionRepository.GetAllAsync();
 
                 Sessions.Clear();
-                foreach (var session in sessions)
+                if (sessions != null)
                 {
-                    Sessions.Add(session);
+                    foreach (var session in sessions)
+                    {
+                        Sessions.Add(session);
+                    }
                 }
 
-                StatusMessage = $"Загружено {sessions.Count} сеансов";
+                StatusMessage = Sessions.Count > 0
+                    ? $"Загружено {Sessions.Count} сеансов"
+                    : "Нет доступных сеансов";
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Ошибка: {ex.Message}";
+                StatusMessage = $"Ошибка загрузки сеансов: {ex.Message}";
             }
             finally
             {
@@ -151,31 +169,53 @@ namespace Day18.ViewModels
             }
         }
 
-        private async Task LoadTicketsAsync()
+        public async Task LoadTicketsAsync()
         {
             try
             {
-                if (_currentUser == null) return;
+                if (_currentUser == null)
+                {
+                    StatusMessage = "Пользователь не авторизован";
+                    return;
+                }
+
+                IsLoading = true;
+                StatusMessage = "Загрузка билетов...";
 
                 var tickets = await _ticketRepository.GetByUserIdAsync(_currentUser.Id);
 
                 Tickets.Clear();
-                foreach (var ticket in tickets)
+                if (tickets != null)
                 {
-                    Tickets.Add(ticket);
+                    foreach (var ticket in tickets)
+                    {
+                        Tickets.Add(ticket);
+                    }
                 }
+
+                StatusMessage = $"Загружено {Tickets.Count} билетов";
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Ошибка загрузки билетов: {ex.Message}";
             }
+            finally
+            {
+                IsLoading = false;
+            }
         }
 
-        private async Task BookTicketAsync()
+        public async Task BookTicketAsync()
         {
-            if (SelectedSession == null || _currentUser == null)
+            if (_currentUser == null)
             {
-                StatusMessage = "Выберите сеанс";
+                StatusMessage = "Ошибка: пользователь не авторизован";
+                return;
+            }
+
+            if (SelectedSession == null)
+            {
+                StatusMessage = "Ошибка: выберите сеанс";
                 return;
             }
 
@@ -187,7 +227,13 @@ namespace Day18.ViewModels
 
             if (string.IsNullOrWhiteSpace(SelectedSeat))
             {
-                StatusMessage = "Введите номер места";
+                StatusMessage = "Ошибка: введите номер места";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(CustomerName))
+            {
+                StatusMessage = "Ошибка: введите ваше имя";
                 return;
             }
 
@@ -202,10 +248,12 @@ namespace Day18.ViewModels
                     SessionId = SelectedSession.Id,
                     CustomerName = CustomerName,
                     PhoneNumber = PhoneNumber,
-                    SeatNumber = SelectedSeat,
+                    SeatNumber = SelectedSeat.ToUpper(),
                     Price = SelectedSession.TicketPrice,
                     MovieTitle = SelectedSession.MovieTitle,
-                    SessionTime = SelectedSession.StartTime
+                    SessionTime = SelectedSession.StartTime,
+                    BookingTime = DateTime.Now,
+                    Status = "Confirmed"
                 };
 
                 await _ticketRepository.AddAsync(ticket);
@@ -216,6 +264,9 @@ namespace Day18.ViewModels
 
                 SelectedSeat = string.Empty;
                 StatusMessage = $"Билет на место {ticket.SeatNumber} успешно забронирован!";
+
+                // Уведомляем об успешном бронировании
+                BookingCompleted?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {
@@ -227,7 +278,7 @@ namespace Day18.ViewModels
             }
         }
 
-        private async Task CancelTicketAsync()
+        public async Task CancelTicketAsync()
         {
             if (SelectedTicket == null)
             {
@@ -247,6 +298,9 @@ namespace Day18.ViewModels
                 await LoadTicketsAsync();
 
                 StatusMessage = $"Билет на место {SelectedTicket.SeatNumber} отменен";
+
+                // Уведомляем об отмене бронирования
+                BookingCancelled?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {

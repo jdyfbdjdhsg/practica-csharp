@@ -26,14 +26,21 @@ namespace Day18.Services
 
                 _data = JsonHelper.ReadFromFile<CinemaData>(_dataPath);
 
-                if (_data.Movies.Count == 0)
+                // ОТЛАДКА
+                System.Diagnostics.Debug.WriteLine($"=== LoadData ===");
+                System.Diagnostics.Debug.WriteLine($"Sessions count: {_data.Sessions?.Count ?? 0}");
+                System.Diagnostics.Debug.WriteLine($"Movies count: {_data.Movies?.Count ?? 0}");
+
+                if (_data.Sessions == null || _data.Sessions.Count == 0)
                 {
+                    System.Diagnostics.Debug.WriteLine("Инициализируем данные...");
                     InitializeData();
                     SaveDataAsync(_data).Wait();
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"LoadData Error: {ex.Message}");
                 InitializeData();
             }
         }
@@ -42,6 +49,7 @@ namespace Day18.Services
         {
             _data = new CinemaData();
 
+            // Фильмы
             _data.Movies = new List<Movie>
             {
                 new() { Id = 1, Title = "Аватар 2", Time = "10:00", Duration = 192, Genre = "Фантастика", Description = "Продолжение эпической истории о мире Пандоры", HallNumber = 1, PosterColor = "#FF1565C0" },
@@ -51,7 +59,7 @@ namespace Day18.Services
                 new() { Id = 5, Title = "Дюна 2", Time = "21:30", Duration = 166, Genre = "Фантастика", Description = "Продолжение эпической саги о пустынной планете", HallNumber = 3, PosterColor = "#FFF9A825" }
             };
 
-            // Инициализация мест
+            // Места
             string[] rows = { "A", "B", "C", "D", "E", "F", "G", "H" };
             int seatId = 1;
             foreach (var movie in _data.Movies)
@@ -75,7 +83,7 @@ namespace Day18.Services
                 }
             }
 
-            // Инициализация сеансов для варианта 9
+            // СЕАНСЫ ДЛЯ ВАРИАНТА 9
             _data.Sessions = new List<Session>
             {
                 new() { Id = 1, MovieTitle = "Аватар 2", MovieGenre = "Фантастика", Duration = 192, StartTime = DateTime.Today.AddHours(10), HallNumber = 1, TotalSeats = 100, AvailableSeats = 100, TicketPrice = 400 },
@@ -84,6 +92,14 @@ namespace Day18.Services
                 new() { Id = 4, MovieTitle = "Джон Уик 4", MovieGenre = "Боевик", Duration = 169, StartTime = DateTime.Today.AddHours(19), HallNumber = 2, TotalSeats = 120, AvailableSeats = 120, TicketPrice = 400 },
                 new() { Id = 5, MovieTitle = "Дюна 2", MovieGenre = "Фантастика", Duration = 166, StartTime = DateTime.Today.AddHours(21), HallNumber = 3, TotalSeats = 80, AvailableSeats = 80, TicketPrice = 500 }
             };
+
+            // ОТЛАДКА
+            System.Diagnostics.Debug.WriteLine($"=== InitializeData ===");
+            System.Diagnostics.Debug.WriteLine($"Создано сеансов: {_data.Sessions.Count}");
+            foreach (var s in _data.Sessions)
+            {
+                System.Diagnostics.Debug.WriteLine($"  - {s.MovieTitle} ({s.StartTime})");
+            }
 
             _data.NextSessionId = 6;
             _data.NextTicketId = 1;

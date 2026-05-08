@@ -12,7 +12,7 @@ namespace Day18.ViewModels
 
         public AsyncRelayCommand(Func<Task> execute, Func<bool>? canExecute = null)
         {
-            _execute = execute;
+            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
             _canExecute = canExecute;
         }
 
@@ -29,12 +29,19 @@ namespace Day18.ViewModels
 
         public async void Execute(object? parameter)
         {
+            if (!CanExecute(parameter))
+                return;
+
             _isExecuting = true;
             CommandManager.InvalidateRequerySuggested();
 
             try
             {
                 await _execute();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Command Error: {ex.Message}");
             }
             finally
             {

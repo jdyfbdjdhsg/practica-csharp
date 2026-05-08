@@ -17,13 +17,19 @@ namespace Day18.Services
         public async Task<List<Session>> GetAllAsync()
         {
             var data = await _dataService.GetDataAsync();
-            return data.Sessions.ToList();
+            var sessions = data.Sessions?.ToList() ?? new List<Session>();
+
+            // ОТЛАДКА
+            System.Diagnostics.Debug.WriteLine($"=== SessionRepository.GetAllAsync ===");
+            System.Diagnostics.Debug.WriteLine($"Найдено сеансов: {sessions.Count}");
+
+            return sessions;
         }
 
         public async Task<Session?> GetByIdAsync(int id)
         {
             var data = await _dataService.GetDataAsync();
-            return data.Sessions.FirstOrDefault(s => s.Id == id);
+            return data.Sessions?.FirstOrDefault(s => s.Id == id);
         }
 
         public async Task AddAsync(Session session)
